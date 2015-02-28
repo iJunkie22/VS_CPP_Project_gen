@@ -24,5 +24,24 @@ It is designed to make projects that can be opened out-of-the-box with either **
 ## Usage
 Simply provide a directory filepath as the final argument to the script or compiled exe, and the generator will do its magic!
 
+## Output
+
+**`<Project>` /**
+**`<Project>` / `Debug` /**
+**`<Project>` / `<Project>` /**
+**`<Project>` / `<Project>` / `.idea` /**
+**`<Project>` / `<Project>` / `.idea` /** `.name`
+**`<Project>` / `<Project>` / `.idea` /** `misc.xml`
+**`<Project>` / `<Project>` / `.idea` /** `modules.xml`
+**`<Project>` / `<Project>` / `.idea` /** `<Project>.iml`
+**`<Project>` / `<Project>` /** `CMakeLists.txt`
+**`<Project>` / `<Project>` /** `main.cpp**`
+**`<Project>` / `<Project>` /** `<Project>.vcxproj`
+**`<Project>` / `<Project>` /** `<Project>.vcxproj.filters`
+**`<Project>` /** `<Project>.sln`
+
+             
 
 >  \*This project is not affiliated with or endorsed by any of the IDEs, companies, etc. mentioned.
+
+> \*\* main.cpp is only generated if the project is missing it

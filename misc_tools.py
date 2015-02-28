@@ -8,6 +8,7 @@ import os
 import os.path
 import fnmatch
 import sys
+import StringIO
 
 
 def generate_uid():
@@ -37,26 +38,43 @@ class Project:
         self.vs_proj_subdir = os.path.join(self.slashless_pp, self.project_folder)
         self.clion_idea_subdir = os.path.join(self.vs_proj_subdir, ".idea")
         cpp_files = None
+        self.cpp_files = []
+        self.h_files = []
 
         try:
             results_list = os.listdir(self.vs_proj_subdir)
-
-            cpp_files = fnmatch.filter(results_list, "*.cpp")
+            self.cpp_files.extend(fnmatch.filter(results_list, "*.cpp"))
+            self.h_files.extend(fnmatch.filter(results_list, "*.h"))
 
         except OSError, e:
-            cpp_files = list()
+            # The project directory does not exist
             os.makedirs(self.vs_proj_subdir)
 
         finally:
-            if len(cpp_files) > 0:
-                self.cpp_file = cpp_files[0]
+            if len(self.cpp_files) > 0:
                 self.cpp_exists = True
             else:
-                self.cpp_file = "main.cpp"
+                self.cpp_files = ['main.cpp']
                 self.cpp_exists = False
 
     def template_filters(self):
         new_template = FileTemplate(fp=self.vs_proj_subdir, fn=str(self.project_folder + ".vcxproj.filters"))
+        xml_buf = StringIO.StringIO()
+        xml_buf.write(u"  <ItemGroup>\n")
+        for c_f in self.cpp_files:
+            xml_buf.write(u"    <ClCompile Include=\"{0}\">\n".format(c_f))
+            xml_buf.write(u"      <Filter>Source Files</Filter>\n")
+            xml_buf.write(u"    </ClCompile>\n")
+        xml_buf.write(u"  </ItemGroup>\n")
+        xml_buf.write(u"  <ItemGroup>\n")
+        for h_f in self.h_files:
+            xml_buf.write(u"    <ClInclude Include=\"{0}\">\n".format(h_f))
+            xml_buf.write(u"      <Filter>Header Files</Filter>\n")
+            xml_buf.write(u"    </ClInclude>\n")
+        xml_buf.write(u"  </ItemGroup>")
+        xml_u_str = xml_buf.getvalue()
+        xml_buf.close()
+
         new_template.format_str = u"""<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
@@ -73,14 +91,10 @@ class Project:
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <ClCompile Include="{cpp_file}">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
+{item_groups}
 </Project>"""
         new_template.format_dict = dict(source_uid=self.source_guid, header_uid=self.header_guid,
-                                        resource_uid=self.resource_guid, cpp_file=self.cpp_file)
+                                        resource_uid=self.resource_guid, item_groups=xml_u_str)
         new_template.write_self()
         return new_template
 
@@ -113,21 +127,41 @@ EndGlobal
 
     def template_cmake_list(self):
         new_template = FileTemplate(fp=self.vs_proj_subdir, fn="CMakeLists.txt")
+        xml_buf = StringIO.StringIO()
+        for i, f in enumerate(self.cpp_files, start=1):
+            if i != len(self.cpp_files):
+                xml_buf.write(u"{0}\n".format(f))
+            else:
+                xml_buf.write(u"{0}".format(f))
+        xml_u_str = xml_buf.getvalue()
+        xml_buf.close()
+
         new_template.format_str = u"""cmake_minimum_required(VERSION 2.8.4)
 project({proj_name})
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
-set(SOURCE_FILES {cpp_file})
+set(SOURCE_FILES {cpp_files})
 add_executable({proj_name} ${SOURCE_FILES})
 """
-        new_template.format_dict = dict(proj_name=self.project_folder, cpp_file=self.cpp_file,
+        new_template.format_dict = dict(proj_name=self.project_folder, cpp_files=xml_u_str,
                                         CMAKE_CXX_FLAGS=u"{CMAKE_CXX_FLAGS}", SOURCE_FILES=u"{SOURCE_FILES}")
         new_template.write_self()
         return new_template
 
     def template_vcxproj(self):
         new_template = FileTemplate(fp=self.vs_proj_subdir, fn=str(self.project_folder + ".vcxproj"))
+        xml_buf = StringIO.StringIO()
+        xml_buf.write(u"  <ItemGroup>\n")
+        for c_f in self.cpp_files:
+            xml_buf.write(u"    <ClCompile Include=\"{0}\" />\n".format(c_f))
+        xml_buf.write(u"  </ItemGroup>\n")
+        xml_buf.write(u"  <ItemGroup>\n")
+        for h_f in self.h_files:
+            xml_buf.write(u"    <ClInclude Include=\"{0}\" />\n".format(h_f))
+        xml_buf.write(u"  </ItemGroup>")
+        xml_u_str = xml_buf.getvalue()
+        xml_buf.close()
         new_template.format_str = u"""<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
@@ -205,14 +239,12 @@ add_executable({proj_name} ${SOURCE_FILES})
       <OptimizeReferences>true</OptimizeReferences>
     </Link>
   </ItemDefinitionGroup>
-  <ItemGroup>
-    <ClCompile Include="{cpp_file}" />
-  </ItemGroup>
+{item_groups}
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>
 </Project>"""
-        new_template.format_dict = dict(globals_uid=self.globals_guid, proj_name=self.project_folder, cpp_file=self.cpp_file)
+        new_template.format_dict = dict(globals_uid=self.globals_guid, proj_name=self.project_folder, item_groups=xml_u_str)
         new_template.write_self()
         return new_template
 
@@ -321,6 +353,7 @@ int main( int argc, char * argv[] )
         self.template_clion_misc().write_file()
         self.template_clion_name().write_file()
         self.template_clion_project_iml().write_file()
+        self.template_cmake_list().write_file()
 
     def main(self):
         try:
@@ -329,9 +362,9 @@ int main( int argc, char * argv[] )
             pass
         self.make_folders()
         self.gen_files()
+
         if self.cpp_exists is False:
             self.template_cpp().write_file()
-            self.template_cmake_list().write_file()
 
 
 class FileTemplate:
