@@ -13,11 +13,8 @@ import StringIO
 
 def generate_uid():
     t_stamp = str(datetime.datetime.now())
-    r_str = hashlib.sha256(t_stamp).hexdigest()[0:32]
-    uid_str = ("{" + ("{0}-{1}-{2}-{3}-{4}".format(r_str[0:8], r_str[8:][:4], r_str[12:][:4],
-                                                   r_str[16:][:4], r_str[20:][:12]
-    )
-    ) + "}")
+    r = hashlib.sha256(t_stamp).hexdigest()[0:32]
+    uid_str = "{" + r[0:8] + "-" + r[8:12] + "-" + r[12:16] + "-" + r[16:20] + "-" + r[20:32] + "}"
     return uid_str
 
 
