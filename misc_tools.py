@@ -25,14 +25,9 @@ class Project:
         self.header_guid = generate_uid()
         self.resource_guid = generate_uid()
         self.project_guid = generate_uid()
-        self.project_path = str(proj_path)
-        if platform == "win32":
-            self.path_sep = "\\"
-        else:
-            self.path_sep = "/"
-        self.slashless_pp = self.project_path.rstrip(self.path_sep)
-        self.project_folder = self.slashless_pp.rpartition(self.path_sep)[2]
-        self.vs_proj_subdir = os.path.join(self.slashless_pp, self.project_folder)
+        self.project_path = os.path.normpath(proj_path)
+        self.project_folder = os.path.basename(self.project_path)
+        self.vs_proj_subdir = os.path.join(self.project_path, self.project_folder)
         self.clion_idea_subdir = os.path.join(self.vs_proj_subdir, ".idea")
         cpp_files = None
         self.cpp_files = []
@@ -96,7 +91,7 @@ class Project:
         return new_template
 
     def template_sln(self):
-        new_template = FileTemplate(fp=self.slashless_pp, fn=str(self.project_folder + ".sln"))
+        new_template = FileTemplate(fp=self.project_path, fn=str(self.project_folder + ".sln"))
         new_template.format_str = u"""
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 2012
@@ -334,7 +329,7 @@ int main( int argc, char * argv[] )
 
     def make_folders(self):
         try:
-            os.mkdir(os.path.join(self.slashless_pp, "Debug"))
+            os.mkdir(os.path.join(self.project_path, "Debug"))
         except OSError:
             pass
         try:
