@@ -246,7 +246,7 @@ add_executable({proj_name} ${SOURCE_FILES})
         return new_template
 
     def template_cpp(self):
-        new_template = FileTemplate(fp=self.vs_proj_subdir, fn=self.cpp_file)
+        new_template = FileTemplate(fp=self.vs_proj_subdir, fn="main.cpp")
         date_today = datetime.datetime.today()
         date_str = str(date_today.strftime("%m/%d/%y"))
         new_template.format_str = u"""/*
